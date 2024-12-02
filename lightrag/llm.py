@@ -1,23 +1,21 @@
-import os
-import copy
-from functools import lru_cache
-import json
 import aioboto3
 import aiohttp
+import base64
+import copy
+import json
 import numpy as np
 import ollama
-
+import os
+import struct
+import torch
+from functools import lru_cache
+from langfuse.openai import AsyncOpenAI, AsyncAzureOpenAI
 from openai import (
-    AsyncOpenAI,
     APIConnectionError,
     RateLimitError,
     Timeout,
-    AsyncAzureOpenAI,
 )
-
-import base64
-import struct
-
+from pydantic import BaseModel, Field
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -25,9 +23,8 @@ from tenacity import (
     retry_if_exception_type,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-from pydantic import BaseModel, Field
 from typing import List, Dict, Callable, Any
+
 from .base import BaseKVStorage
 from .utils import compute_args_hash, wrap_embedding_func_with_attrs
 
@@ -40,13 +37,13 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
 )
 async def openai_complete_if_cache(
-    model,
-    prompt,
-    system_prompt=None,
-    history_messages=[],
-    base_url=None,
-    api_key=None,
-    **kwargs,
+        model,
+        prompt,
+        system_prompt=None,
+        history_messages=[],
+        base_url=None,
+        api_key=None,
+        **kwargs,
 ) -> str:
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
@@ -86,13 +83,13 @@ async def openai_complete_if_cache(
     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
 )
 async def azure_openai_complete_if_cache(
-    model,
-    prompt,
-    system_prompt=None,
-    history_messages=[],
-    base_url=None,
-    api_key=None,
-    **kwargs,
+        model,
+        prompt,
+        system_prompt=None,
+        history_messages=[],
+        base_url=None,
+        api_key=None,
+        **kwargs,
 ):
     if api_key:
         os.environ["AZURE_OPENAI_API_KEY"] = api_key
@@ -139,14 +136,14 @@ class BedrockError(Exception):
     retry=retry_if_exception_type((BedrockError)),
 )
 async def bedrock_complete_if_cache(
-    model,
-    prompt,
-    system_prompt=None,
-    history_messages=[],
-    aws_access_key_id=None,
-    aws_secret_access_key=None,
-    aws_session_token=None,
-    **kwargs,
+        model,
+        prompt,
+        system_prompt=None,
+        history_messages=[],
+        aws_access_key_id=None,
+        aws_secret_access_key=None,
+        aws_session_token=None,
+        **kwargs,
 ) -> str:
     os.environ["AWS_ACCESS_KEY_ID"] = os.environ.get(
         "AWS_ACCESS_KEY_ID", aws_access_key_id
@@ -182,7 +179,7 @@ async def bedrock_complete_if_cache(
         "stop_sequences": "stopSequences",
     }
     if inference_params := list(
-        set(kwargs) & set(["max_tokens", "temperature", "top_p", "stop_sequences"])
+            set(kwargs) & set(["max_tokens", "temperature", "top_p", "stop_sequences"])
     ):
         args["inferenceConfig"] = {}
         for param in inference_params:
@@ -233,7 +230,7 @@ def initialize_hf_model(model_name):
 
 
 async def hf_model_if_cache(
-    model, prompt, system_prompt=None, history_messages=[], **kwargs
+        model, prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     model_name = model
     hf_model, hf_tokenizer = initialize_hf_model(model_name)
@@ -259,10 +256,10 @@ async def hf_model_if_cache(
             ori_message = copy.deepcopy(messages)
             if messages[0]["role"] == "system":
                 messages[1]["content"] = (
-                    "<system>"
-                    + messages[0]["content"]
-                    + "</system>\n"
-                    + messages[1]["content"]
+                        "<system>"
+                        + messages[0]["content"]
+                        + "</system>\n"
+                        + messages[1]["content"]
                 )
                 messages = messages[1:]
                 input_prompt = hf_tokenizer.apply_chat_template(
@@ -272,14 +269,14 @@ async def hf_model_if_cache(
             len_message = len(ori_message)
             for msgid in range(len_message):
                 input_prompt = (
-                    input_prompt
-                    + "<"
-                    + ori_message[msgid]["role"]
-                    + ">"
-                    + ori_message[msgid]["content"]
-                    + "</"
-                    + ori_message[msgid]["role"]
-                    + ">\n"
+                        input_prompt
+                        + "<"
+                        + ori_message[msgid]["role"]
+                        + ">"
+                        + ori_message[msgid]["content"]
+                        + "</"
+                        + ori_message[msgid]["role"]
+                        + ">\n"
                 )
 
     input_ids = hf_tokenizer(
@@ -290,7 +287,7 @@ async def hf_model_if_cache(
         **input_ids, max_new_tokens=512, num_return_sequences=1, early_stopping=True
     )
     response_text = hf_tokenizer.decode(
-        output[0][len(inputs["input_ids"][0]) :], skip_special_tokens=True
+        output[0][len(inputs["input_ids"][0]):], skip_special_tokens=True
     )
     if hashing_kv is not None:
         await hashing_kv.upsert({args_hash: {"return": response_text, "model": model}})
@@ -298,7 +295,7 @@ async def hf_model_if_cache(
 
 
 async def ollama_model_if_cache(
-    model, prompt, system_prompt=None, history_messages=[], **kwargs
+        model, prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     kwargs.pop("max_tokens", None)
     kwargs.pop("response_format", None)
@@ -331,12 +328,12 @@ async def ollama_model_if_cache(
 
 @lru_cache(maxsize=1)
 def initialize_lmdeploy_pipeline(
-    model,
-    tp=1,
-    chat_template=None,
-    log_level="WARNING",
-    model_format="hf",
-    quant_policy=0,
+        model,
+        tp=1,
+        chat_template=None,
+        log_level="WARNING",
+        model_format="hf",
+        quant_policy=0,
 ):
     from lmdeploy import pipeline, ChatTemplateConfig, TurbomindEngineConfig
 
@@ -354,14 +351,14 @@ def initialize_lmdeploy_pipeline(
 
 
 async def lmdeploy_model_if_cache(
-    model,
-    prompt,
-    system_prompt=None,
-    history_messages=[],
-    chat_template=None,
-    model_format="hf",
-    quant_policy=0,
-    **kwargs,
+        model,
+        prompt,
+        system_prompt=None,
+        history_messages=[],
+        chat_template=None,
+        model_format="hf",
+        quant_policy=0,
+        **kwargs,
 ) -> str:
     """
     Args:
@@ -445,11 +442,11 @@ async def lmdeploy_model_if_cache(
 
     response = ""
     async for res in lmdeploy_pipe.generate(
-        messages,
-        gen_config=gen_config,
-        do_preprocess=do_preprocess,
-        stream_response=False,
-        session_id=1,
+            messages,
+            gen_config=gen_config,
+            do_preprocess=do_preprocess,
+            stream_response=False,
+            session_id=1,
     ):
         response += res.response
 
@@ -459,7 +456,7 @@ async def lmdeploy_model_if_cache(
 
 
 async def gpt_4o_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     return await openai_complete_if_cache(
         "gpt-4o",
@@ -471,7 +468,7 @@ async def gpt_4o_complete(
 
 
 async def gpt_4o_mini_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     return await openai_complete_if_cache(
         "gpt-4o-mini",
@@ -483,7 +480,7 @@ async def gpt_4o_mini_complete(
 
 
 async def azure_openai_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     return await azure_openai_complete_if_cache(
         "conversation-4o-mini",
@@ -495,7 +492,7 @@ async def azure_openai_complete(
 
 
 async def bedrock_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     return await bedrock_complete_if_cache(
         "anthropic.claude-3-haiku-20240307-v1:0",
@@ -507,7 +504,7 @@ async def bedrock_complete(
 
 
 async def hf_model_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     model_name = kwargs["hashing_kv"].global_config["llm_model_name"]
     return await hf_model_if_cache(
@@ -520,7 +517,7 @@ async def hf_model_complete(
 
 
 async def ollama_model_complete(
-    prompt, system_prompt=None, history_messages=[], **kwargs
+        prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
     model_name = kwargs["hashing_kv"].global_config["llm_model_name"]
     return await ollama_model_if_cache(
@@ -539,10 +536,10 @@ async def ollama_model_complete(
     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
 )
 async def openai_embedding(
-    texts: list[str],
-    model: str = "text-embedding-3-small",
-    base_url: str = None,
-    api_key: str = None,
+        texts: list[str],
+        model: str = "text-embedding-3-small",
+        base_url: str = None,
+        api_key: str = None,
 ) -> np.ndarray:
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
@@ -563,10 +560,10 @@ async def openai_embedding(
     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
 )
 async def azure_openai_embedding(
-    texts: list[str],
-    model: str = "text-embedding-3-small",
-    base_url: str = None,
-    api_key: str = None,
+        texts: list[str],
+        model: str = "text-embedding-3-small",
+        base_url: str = None,
+        api_key: str = None,
 ) -> np.ndarray:
     if api_key:
         os.environ["AZURE_OPENAI_API_KEY"] = api_key
@@ -591,11 +588,11 @@ async def azure_openai_embedding(
     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
 )
 async def siliconcloud_embedding(
-    texts: list[str],
-    model: str = "netease-youdao/bce-embedding-base_v1",
-    base_url: str = "https://api.siliconflow.cn/v1/embeddings",
-    max_token_size: int = 512,
-    api_key: str = None,
+        texts: list[str],
+        model: str = "netease-youdao/bce-embedding-base_v1",
+        base_url: str = "https://api.siliconflow.cn/v1/embeddings",
+        max_token_size: int = 512,
+        api_key: str = None,
 ) -> np.ndarray:
     if api_key and not api_key.startswith("Bearer "):
         api_key = "Bearer " + api_key
@@ -630,11 +627,11 @@ async def siliconcloud_embedding(
 #     retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),  # TODO: fix exceptions
 # )
 async def bedrock_embedding(
-    texts: list[str],
-    model: str = "amazon.titan-embed-text-v2:0",
-    aws_access_key_id=None,
-    aws_secret_access_key=None,
-    aws_session_token=None,
+        texts: list[str],
+        model: str = "amazon.titan-embed-text-v2:0",
+        aws_access_key_id=None,
+        aws_secret_access_key=None,
+        aws_session_token=None,
 ) -> np.ndarray:
     os.environ["AWS_ACCESS_KEY_ID"] = os.environ.get(
         "AWS_ACCESS_KEY_ID", aws_access_key_id
@@ -783,7 +780,7 @@ class MultiModel:
         return self._models[self._current_model]
 
     async def llm_model_func(
-        self, prompt, system_prompt=None, history_messages=[], **kwargs
+            self, prompt, system_prompt=None, history_messages=[], **kwargs
     ) -> str:
         kwargs.pop("model", None)  # stop from overwriting the custom model name
         next_model = self._next_model()
@@ -801,8 +798,10 @@ class MultiModel:
 if __name__ == "__main__":
     import asyncio
 
+
     async def main():
         result = await gpt_4o_mini_complete("How are you?")
         print(result)
+
 
     asyncio.run(main())

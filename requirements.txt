@@ -20,3 +20,6 @@ tiktoken
 torch
 transformers
 xxhash
+
+# langfuse
+langfuse
