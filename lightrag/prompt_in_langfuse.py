@@ -12,11 +12,11 @@ PROMPTS["DEFAULT_RECORD_DELIMITER"] = "##"
 PROMPTS["DEFAULT_COMPLETION_DELIMITER"] = "<|COMPLETE|>"
 PROMPTS["process_tickers"] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
-PROMPTS["DEFAULT_ENTITY_TYPES"] = [langfuse.get_prompt(f"DEFAULT_ENTITY_TYPES_{i}") for i in range(1, 4)]
+PROMPTS["DEFAULT_ENTITY_TYPES"] = [langfuse.get_prompt(f"DEFAULT_ENTITY_TYPES_{i}") for i in range(0, 4)]
 
 PROMPTS["entity_extraction"] = langfuse.get_prompt("entity_extraction")
 
-PROMPTS["entity_extraction_examples"] = [langfuse.get_prompt(f"entity_extraction_examples_{i}") for i in range(1, 3)]
+PROMPTS["entity_extraction_examples"] = [langfuse.get_prompt(f"entity_extraction_examples_{i}") for i in range(0, 3)]
 
 PROMPTS[
     "summarize_entity_descriptions"
@@ -37,5 +37,5 @@ PROMPTS["rag_response"] = langfuse.get_prompt("rag_response")
 PROMPTS["keywords_extraction"] = langfuse.get_prompt("keywords_extraction")
 
 PROMPTS["keywords_extraction_examples"] = [langfuse.get_prompt(f"keywords_extraction_examples_{i}") for i in
-                                           range(1, 3)]
+                                           range(0, 3)]
 PROMPTS["naive_rag_response"] = langfuse.get_prompt("naive_rag_response")
