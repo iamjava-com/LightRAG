@@ -14,7 +14,7 @@ from .base import (
     TextChunkSchema,
     QueryParam,
 )
-from .prompt import GRAPH_FIELD_SEP, PROMPTS
+from .prompt_in_langfuse import GRAPH_FIELD_SEP, PROMPTS
 from .utils import (
     logger,
     clean_str,
