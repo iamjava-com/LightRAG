@@ -463,7 +463,7 @@ async def kg_query(
     use_model_func = global_config["llm_model_func"]
     kw_prompt_temp = PROMPTS["keywords_extraction"]
     kw_prompt = kw_prompt_temp.format(query=query, examples=examples, language=language)
-    result = await use_model_func(kw_prompt, asdict(query_param))
+    result = await use_model_func(kw_prompt, **asdict(query_param))
     logger.info("kw_prompt result:")
     print(result)
     try:
